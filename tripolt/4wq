@@ -1,0 +1,2 @@
+phaseDiagramEnergyCheat.py|8 col 1 warning| W0611 'mpl_toolkits.mplot3d.Axes3D' imported but unused [pyflakes]
+phaseDiagramEnergyCheat.py|17 col 57 C| E128 continuation line under-indented for visual indent [pep8]
