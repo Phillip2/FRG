@@ -53,6 +53,13 @@ def flow_eq(u, k, N, Nd, g, mu, T, gr, dx, xx, yy):
         uxxCent = (u[i+0:i+N-2] - 2*u[i+1:i+N-1] + u[i+2:i+N])/dx**2
         uxx = np.append(uxx, np.append(np.append(uxxForw, uxxCent), uxxBack))
 
+    uyyForw = (2.0*u[0:N] - 5.0*u[N:2*N] + 4.0*u[2*N:3*N] - 1.0*u[3*N:4*N]) \
+        / dy**2
+    uyyBack = (2.0*u[(Nd-1)*N:Nd*N] - 5.0*u[(Nd-2)*N:(Nd-1)*N]
+               + 4.0*u[(Nd-3)*N:(Nd-2)*N] - 1.0*u[(Nd-4)*N:(Nd-3)*N])/dy**2
+    uyyCent = (u[0:(Nd-2)*N] - 2*u[N:(Nd-1)*N] + u[2*N:Nd*N])/dy**2
+    uyy = np.append(np.append(uyyForw, uyyCent), uyyBack)
+
     dudk = k**4/(12*pi**2)*(3.0/Epi(k, ux)*(1.0/np.tanh(Epi(k, ux)/(2*T)))
                             + 1.0/(Esig(k, ux, uxx, xx))
                             * (1.0/np.tanh(Esig(k, ux, uxx, xx)/(2*T)))
@@ -79,7 +86,7 @@ if __name__ == "__main__":
     N_k = 50
     L = 150.0**2
     N = 60
-    Nd = 2
+    Nd = 4
     dx = L / (N)
     dy = L / (Nd)
     x = np.linspace(0, L, N)
@@ -99,15 +106,16 @@ if __name__ == "__main__":
     u0 = 1.0/2.0*m_lam**2*gr + lam/4.0*gr**2
     T_min = 3
     T_max = 220
-    N_T = 6
+    N_T = 4
     mu_max = 420
-    N_mu = 6
+    N_mu = 4
     T_array = np.linspace(T_min, T_max, N_T)
     mu_array = np.linspace(0, mu_max, N_mu)
     expl_sym_br = 1450000*np.sqrt(xx)
     complete_sol = [[None for _ in range(len(mu_array))] for _ in
                     range(len(T_array))]
     min_values = np.empty([len(mu_array), len(T_array)])
+    min_values_diq = np.empty([len(mu_array), len(T_array)])
 
     for m in range(len(mu_array)):
         for t in range(len(T_array)):
@@ -115,9 +123,13 @@ if __name__ == "__main__":
             sol = solution(u0, k, N, Nd, g, mu_array[m], T_array[t], gr, dx,
                            xx, yy)
             complete_sol[m][t] = sol
-            min_values[m, t] = np.sqrt(np.argmin([sol[-1, :] - expl_sym_br])
-                                       * dx)
+            argm = np.argmin([sol[-1, :] - expl_sym_br])
+            print(argm)
+            min_values[m, t] = np.sqrt((argm % N)*dx)
+            min_values_diq[m, t] = np.sqrt(int(str(float(argm)/N)[0])*dy)
+            print(min_values[m, t], min_values_diq[m, t])
 
+    # TODO EXTRACT CORRECT MIN VALUES
     # print("expl", expl_sym_br)
     # print("complete", (complete_sol[0][0] - expl_sym_br)[-1, :])
     print("chiral condensate: "+str(min_values[0, 0]))
