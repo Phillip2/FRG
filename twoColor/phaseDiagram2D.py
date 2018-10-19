@@ -13,6 +13,7 @@ import multiprocessing
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.ticker import MaxNLocator
 
 
 def Epi(k, ux):
@@ -92,7 +93,7 @@ def ode_solve(N, Nd, g, m, t, gr, dx, xx, yy, T_ax, mu_ax):
     c = 1
     while c < N_k:
         ode15s.integrate(ode15s.t-dk)
-        print(ode15s.t)
+        # print(ode15s.t)
         c += 1
     return (ode15s.y, ode15s.t, ode15s.successful())
 
@@ -109,7 +110,6 @@ def interpFunc(t, a, b, c):
 
 
 def interpolate(s, expl_sym_br, dx):
-    # Quadratische Interpolation vielleicht zu ungenau...
     x1 = np.argmin([s - expl_sym_br])
     x2 = x1 + 1
     x3 = x1 - 1
@@ -128,13 +128,36 @@ def interpolate(s, expl_sym_br, dx):
     return minimize, b, 2*a
 
 
+def interpolateDiq(s, expl_sym_br, dy, N):
+    argm = np.argmin([s - expl_sym_br])
+    x1 = floor(argm/N)
+    x2 = x1 + 1
+    x3 = x1 - 1
+    print("Diquark Minimum Interpolation")
+    print(x1, x2, x3)
+    y1 = s[argm] - expl_sym_br[argm]
+    y2 = s[argm + N] - expl_sym_br[argm + N]
+    y3 = s[argm - N] - expl_sym_br[argm - N]
+    print(y1, y2, y3)
+    print("expl: "+str(expl_sym_br[argm])+"..."+str(expl_sym_br[argm + N]))
+    a = (x1*(y3 - y2) + x2*(y1 - y3) + x3*(y2 - y1))/((x1 - x2)*(x1 - x3) *
+                                                      (x2 - x3))
+    b = (y2 - y1)/(x2 - x1) - a*(x1 + x2)
+    c = y1 - a*x1**2 - b*x1
+    min_pos = fmin(interpFunc, x1, args=(a, b, c), xtol=0.001, ftol=1e+6)[0]
+    print(min_pos, floor(argm/N))
+    minimize = np.sqrt(min_pos*dy)
+    print(min_pos, minimize)
+    return minimize, b, 2*a
+
+
 if __name__ == "__main__":
     start = time.time()
     lam = 23
     m_lam = 0
     g = 4.8
     k_cutoff = 600
-    k_IR = 100
+    k_IR = 80
     dk = 1
     N_k = (k_cutoff - k_IR)/(dk) + 1
     L = 140.0**2
@@ -158,12 +181,12 @@ if __name__ == "__main__":
     # k = np.linspace(k_cutoff, k_IR, N_k)
     u0 = 1.0/2.0*m_lam**2*gr + lam/4.0*gr**2
 
-    T_min = 5
-    T_max = 200
-    N_T = 20
+    T_min = 3
+    T_max = 250
+    N_T = 40
     mu_min = 0
     mu_max = 150
-    N_mu = 20
+    N_mu = 40
     T_array = np.linspace(T_min, T_max, N_T)
     mu_array = np.linspace(mu_min, mu_max, N_mu)
     mu_ax, T_ax = np.meshgrid(mu_array, T_array)
@@ -201,13 +224,16 @@ if __name__ == "__main__":
             if argm % N != 0 and argm % N != N - 1:
                 minimum = interpolate(s, expl_sym_br, dx)[0]
                 min_values[t, m] = minimum
-                min_values_diq[t, m] = np.sqrt(floor(argm/N)*dy)
                 m_pi[t, m] = np.sqrt(h/min_values[t, m])
                 m_sig[t, m] = np.sqrt(4*min_values[t, m]**2 *
                                       interpolate(s, expl_sym_br, dx)[2]/dx**2
                                       + m_pi[t, m]**2)
             else:
                 min_values[t, m] = np.sqrt(np.argmin([s - expl_sym_br]) % N*dx)
+            if floor(argm/N) != 0 and floor(argm/N) != Nd - 1:
+                minimum = interpolateDiq(s, expl_sym_br, dy, N)[0]
+                min_values_diq[t, m] = minimum
+            else:
                 min_values_diq[t, m] = np.sqrt(floor(argm/N)*dy)
 
     print("chiral condensate: "+str(min_values[0, 0]))
@@ -219,7 +245,6 @@ if __name__ == "__main__":
     print("TIME:", end - start)
     plt.plot(sol[0][0])
     plt.plot(sol[0][-1])
-    plt.show()
     param_list = np.array([lam, m_lam, g, k_cutoff, k_IR, N_k, L, N, dx,
                            T_min, T_max, N_T, mu_max, N_mu, Nd, mu_min])
     doc = open("optimize.txt", "a")
@@ -231,15 +256,20 @@ if __name__ == "__main__":
     fig_name = dat_name+'.png'
     np.save(dat_name, sol)
     np.save(params_name, param_list)
-    fig = plt.figure()
-    CS = plt.contourf(mu_ax, T_ax, min_values, 16)
+    fig, ax1 = plt.subplots(nrows=1)
+    levels = MaxNLocator(nbins=32).tick_values(min_values.min(),
+                                               min_values.max())
+    CS = ax1.contourf(mu_ax, T_ax, min_values, levels=levels)
+    fig.colorbar(CS, ax=ax1)
     plt.title('Phase Diagram')
     plt.savefig(fig_name)
-    fig = plt.figure()
-    CS = plt.contourf(mu_ax, T_ax, min_values_diq, 16)
+    fig, ax1 = plt.subplots(nrows=1)
+    levels = MaxNLocator(nbins=32).tick_values(min_values_diq.min(),
+                                               min_values_diq.max())
+    CS = ax1.contourf(mu_ax, T_ax, min_values_diq, levels=levels)
+    fig.colorbar(CS, ax=ax1)
     plt.title('Diquark Phase Diagram')
     plt.savefig('Diq'+fig_name)
-    plt.show()
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.plot_wireframe(mu_ax, T_ax, min_values, color='red')
