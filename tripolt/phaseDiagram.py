@@ -84,31 +84,31 @@ if __name__ == "__main__":
     dx = x[1] - x[0]
     k = np.linspace(k_cutoff, k_IR, N_k)
     u0 = 1.0/2.0*m_lam**2*x + lam/4.0*x**2
-    T_max = 250
-    N_T = 20
-    mu_max = 400
-    N_mu = 20
-    T_min = 5
+    T_min = 3
+    T_max = 200
+    N_T = 5
     mu_min = 0
+    mu_max = 350
+    N_mu = 5
     T_array = np.linspace(T_min, T_max, N_T)
     mu_array = np.linspace(mu_min, mu_max, N_mu)
     h = 1750000
     expl_sym_br = h*np.sqrt(x)
-    sol = [[None for _ in range(len(mu_array))] for _ in
-           range(len(T_array))]
-    min_values = np.zeros([len(mu_array), len(T_array)])
-    m_sig = np.zeros([len(mu_array), len(T_array)])
-    m_pi = np.zeros([len(mu_array), len(T_array)])
+    sol = [[None for _ in range(N_mu)] for _ in
+           range(N_T)]
+    min_values = np.zeros([N_T, N_mu])
+    m_sig = np.zeros([N_T, N_mu])
+    m_pi = np.zeros([N_T, N_mu])
 
     num_cores = multiprocessing.cpu_count()
 
-    for t in range(len(T_array)):
+    for t in range(N_T):
         sol[t] = Parallel(n_jobs=num_cores)(delayed(solution)
                                             (u0, k, N, g, mu_array[m],
                                              T_array[t], x, dx)
-                                            for m in range(len(mu_array)))
-    for t in range(len(T_array)):
-        for m in range(len(mu_array)):
+                                            for m in range(N_mu))
+    for t in range(N_T):
+        for m in range(N_mu):
             s = sol[t][m]
             argmin = np.argmin([s[-1, :] - expl_sym_br])
             if argmin != 0 and argmin != N - 1:
@@ -122,16 +122,24 @@ if __name__ == "__main__":
                                                       - expl_sym_br])*dx)
             # print(min_values)
 
+    print(np.shape(sol))
+    plt.plot(sol[0][0][-1] - expl_sym_br, color="r")
+    plt.plot(sol[0][1][-1] - expl_sym_br, color="r")
+    plt.plot(sol[0][2][-1] - expl_sym_br, color="r")
+    plt.plot(sol[0][3][-1] - expl_sym_br, color="r")
+    plt.plot(sol[0][-3][-1] - expl_sym_br, color="b")
+    plt.plot(sol[0][-2][-1] - expl_sym_br, color="b")
+    plt.plot(sol[0][-1][-1] - expl_sym_br, color="b")
+    plt.show()
     print("chiral condensate: "+str(min_values[0, 0]))
     print("vacuum pion mass: "+str(m_pi[0, 0]))
     print("vacuum sigma mass: "+str(m_sig[0, 0]))
-    param_list = np.array([lam, m_lam, g, k_cutoff, k_IR, N_k, L, N, dx, T_max,
-                           N_T, mu_max, N_mu])
+    param_list = np.array([lam, m_lam, g, k_cutoff, k_IR, N_k, L, N, T_min, T_max, N_T,
+                  mu_min, mu_max, N_mu, h, sol], dtype=object)
+    print(param_list)
     dat_name = 'TripoltPhaseDiagramN_T'+str(N_T)+'N_mu'+str(N_mu)
-    params_name = dat_name+'params'
     fig_name = 'TripoltPhaseDiagramN_T'+str(N_T)+'N_mu'+str(N_mu)+'.png'
-    np.save(dat_name, sol)
-    np.save(params_name, param_list)
+    np.save(dat_name, param_list)
     mu_ax, T_ax = np.meshgrid(mu_array, T_array)
     fig = plt.figure()
     CS = plt.contourf(mu_ax, T_ax, min_values, 15)
