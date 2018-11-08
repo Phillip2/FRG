@@ -2,7 +2,7 @@
 
 from math import pi
 import numpy as np
-from scipy.integrate import odeint
+from scipy.integrate import ode
 from joblib import Parallel, delayed
 import multiprocessing
 import matplotlib.pyplot as plt
@@ -21,8 +21,9 @@ def Eq(k, g, x):
     return np.sqrt(k**2 + g**2*x)
 
 
-def flow_eq(u, k, N, g, mu, T, x, dx):
-
+def f(t, y, N, g, mu, T, x, dx):
+    u = y
+    k = t
     uxForw = (-3.0/2.0*u[0] + 2.0*u[1] - 1.0/2.0*u[2])/dx
     uxBack = (3.0/2.0*u[N-1] - 2.0*u[N-2] + 1.0/2.0*u[N-3])/dx
     uxCent = (-1.0/2.0*u[0:-2] + 1.0/2.0*u[2:])/dx
@@ -43,11 +44,22 @@ def flow_eq(u, k, N, g, mu, T, x, dx):
     return dudk
 
 
-def solution(u0, k, N, g, mu, T, x, dx):
-    sol = odeint(flow_eq, u0, k, args=(N, g, mu, T, x, dx, ), mxstep=200000,
-                 rtol=1e-13, atol=1e-13, full_output=False)
-    print((mu, T))
-    return sol
+def ode_solve(N, g, m, t, x, dx, mu_ax, T_ax):
+    ode15s.set_initial_value(u0, k_cutoff).set_f_params(N, g, mu_ax[t][m],
+                                                        T_ax[t][m], x, dx)
+    c = 1
+    while c < N_k:
+        ode15s.integrate(ode15s.t-dk)
+        print(ode15s.t)
+        c += 1
+    return (ode15s.y, ode15s.t, ode15s.successful())
+
+
+def solve(N, g, m, t, x, dx, mu_ax, T_ax):
+    res = ode_solve(N, g, m, t, x, dx, mu_ax, T_ax)
+    print(res[1], res[2])
+    print((mu_ax[t][m], T_ax[t][m]))
+    return res[0]
 
 
 def interpFunc(t, a, b, c):
@@ -56,12 +68,12 @@ def interpFunc(t, a, b, c):
 
 def interpolate(s, expl_sym_br, dx):
     # Quadratische Interpolation vielleicht zu ungenau...
-    x1 = np.argmin([s[-1, :] - expl_sym_br])
+    x1 = np.argmin([s - expl_sym_br])
     x2 = x1 + 1
     x3 = x1 - 1
-    y1 = s[-1, x1] - expl_sym_br[x1]
-    y2 = s[-1, x2] - expl_sym_br[x2]
-    y3 = s[-1, x3] - expl_sym_br[x3]
+    y1 = s[x1] - expl_sym_br[x1]
+    y2 = s[x2] - expl_sym_br[x2]
+    y3 = s[x3] - expl_sym_br[x3]
     a = (x1*(y3 - y2) + x2*(y1 - y3) + x3*(y2 - y1))/((x1 - x2)*(x1 - x3) *
                                                       (x2 - x3))
     b = (y2 - y1)/(x2 - x1) - a*(x1 + x2)
@@ -77,14 +89,15 @@ if __name__ == "__main__":
     g = 3.2
     k_cutoff = 1000
     k_IR = 100
-    N_k = 100
+    dk = 1
+    N_k = (k_cutoff - k_IR)/(dk) + 1
     L = 140.0**2
     N = 50
     x = np.linspace(0, L, N)
     dx = x[1] - x[0]
     k = np.linspace(k_cutoff, k_IR, N_k)
     u0 = 1.0/2.0*m_lam**2*x + lam/4.0*x**2
-    T_min = 3
+    T_min = 5
     T_max = 200
     N_T = 5
     mu_min = 0
@@ -92,6 +105,7 @@ if __name__ == "__main__":
     N_mu = 5
     T_array = np.linspace(T_min, T_max, N_T)
     mu_array = np.linspace(mu_min, mu_max, N_mu)
+    mu_ax, T_ax = np.meshgrid(mu_array, T_array)
     h = 1750000
     expl_sym_br = h*np.sqrt(x)
     sol = [[None for _ in range(N_mu)] for _ in
@@ -100,17 +114,26 @@ if __name__ == "__main__":
     m_sig = np.zeros([N_T, N_mu])
     m_pi = np.zeros([N_T, N_mu])
 
+    ode_order = 5
+    ode_steps = 200000
+    ode_integrator = 'vode'
+    ode_method = 'bdf'
+    r_tol = 1e-13
+    a_tol = 1e-13
+    ode15s = ode(f)
+    ode15s.set_integrator(ode_integrator, method=ode_method, order=ode_order,
+                          nsteps=ode_steps, rtol=r_tol, atol=a_tol)
+
     num_cores = multiprocessing.cpu_count()
 
     for t in range(N_T):
-        sol[t] = Parallel(n_jobs=num_cores)(delayed(solution)
-                                            (u0, k, N, g, mu_array[m],
-                                             T_array[t], x, dx)
+        sol[t] = Parallel(n_jobs=num_cores)(delayed(solve)(N, g, m, t, x,
+                                                              dx, mu_ax, T_ax)
                                             for m in range(N_mu))
     for t in range(N_T):
         for m in range(N_mu):
             s = sol[t][m]
-            argmin = np.argmin([s[-1, :] - expl_sym_br])
+            argmin = np.argmin([s - expl_sym_br])
             if argmin != 0 and argmin != N - 1:
                 min_values[t, m] = interpolate(s, expl_sym_br, dx)[0]
                 m_pi[t, m] = np.sqrt(h/min_values[t, m])
@@ -118,29 +141,25 @@ if __name__ == "__main__":
                                       interpolate(s, expl_sym_br, dx)[2]/dx**2
                                       + m_pi[t, m]**2)
             else:
-                min_values[t, m] = np.sqrt(np.argmin([s[-1, :]
+                min_values[t, m] = np.sqrt(np.argmin([s
                                                       - expl_sym_br])*dx)
-            # print(min_values)
 
-    print(np.shape(sol))
-    plt.plot(sol[0][0][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][1][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][2][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][3][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][-3][-1] - expl_sym_br, color="b")
-    plt.plot(sol[0][-2][-1] - expl_sym_br, color="b")
-    plt.plot(sol[0][-1][-1] - expl_sym_br, color="b")
+    plt.plot(sol[0][0] - expl_sym_br, color="r")
+    plt.plot(sol[0][1] - expl_sym_br, color="r")
+    plt.plot(sol[0][2] - expl_sym_br, color="r")
+    plt.plot(sol[0][3] - expl_sym_br, color="r")
+    plt.plot(sol[0][-3] - expl_sym_br, color="b")
+    plt.plot(sol[0][-2] - expl_sym_br, color="b")
+    plt.plot(sol[0][-1] - expl_sym_br, color="b")
     plt.show()
     print("chiral condensate: "+str(min_values[0, 0]))
     print("vacuum pion mass: "+str(m_pi[0, 0]))
     print("vacuum sigma mass: "+str(m_sig[0, 0]))
     param_list = np.array([lam, m_lam, g, k_cutoff, k_IR, N_k, L, N, T_min, T_max, N_T,
                   mu_min, mu_max, N_mu, h, sol], dtype=object)
-    print(param_list)
     dat_name = 'TripoltPhaseDiagramN_T'+str(N_T)+'N_mu'+str(N_mu)
     fig_name = 'TripoltPhaseDiagramN_T'+str(N_T)+'N_mu'+str(N_mu)+'.png'
     np.save(dat_name, param_list)
-    mu_ax, T_ax = np.meshgrid(mu_array, T_array)
     fig = plt.figure()
     CS = plt.contourf(mu_ax, T_ax, min_values, 15)
     plt.title('Phase Diagram')

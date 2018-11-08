@@ -13,12 +13,12 @@ def interpFunc(t, a, b, c):
 
 def interpolate(s, expl_sym_br, dx):
     # Quadratische Interpolation vielleicht zu ungenau...
-    x1 = np.argmin([s[-1, :] - expl_sym_br])
+    x1 = np.argmin([s - expl_sym_br])
     x2 = x1 + 1
     x3 = x1 - 1
-    y1 = s[-1, x1] - expl_sym_br[x1]
-    y2 = s[-1, x2] - expl_sym_br[x2]
-    y3 = s[-1, x3] - expl_sym_br[x3]
+    y1 = s[x1] - expl_sym_br[x1]
+    y2 = s[x2] - expl_sym_br[x2]
+    y3 = s[x3] - expl_sym_br[x3]
     a = (x1*(y3 - y2) + x2*(y1 - y3) + x3*(y2 - y1))/((x1 - x2)*(x1 - x3) *
                                                       (x2 - x3))
     b = (y2 - y1)/(x2 - x1) - a*(x1 + x2)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     for t in range(N_T):
         for m in range(N_mu):
             s = sol[t][m]
-            argmin = np.argmin([s[-1, :] - expl_sym_br])
+            argmin = np.argmin([s - expl_sym_br])
             if argmin != 0 and argmin != N - 1:
                 min_values[t, m] = interpolate(s, expl_sym_br, dx)[0]
                 m_pi[t, m] = np.sqrt(h/min_values[t, m])
@@ -72,19 +72,14 @@ if __name__ == "__main__":
                                       interpolate(s, expl_sym_br, dx)[2]/dx**2
                                       + m_pi[t, m]**2)
             else:
-                min_values[t, m] = np.sqrt(np.argmin([s[-1, :]
+                min_values[t, m] = np.sqrt(np.argmin([s
                                                       - expl_sym_br])*dx)
 
     print("chiral condensate: "+str(min_values[0, 0]))
     print("vacuum pion mass: "+str(m_pi[0, 0]))
     print("vacuum sigma mass: "+str(m_sig[0, 0]))
-    plt.plot(sol[0][0][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][1][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][2][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][3][-1] - expl_sym_br, color="r")
-    plt.plot(sol[0][-3][-1] - expl_sym_br, color="b")
-    plt.plot(sol[0][-2][-1] - expl_sym_br, color="b")
-    plt.plot(sol[0][-1][-1] - expl_sym_br, color="b")
+    plt.plot(sol[0][0] - expl_sym_br, color="r")
+    plt.plot(sol[0][-1] - expl_sym_br, color="b")
     mu_ax, T_ax = np.meshgrid(mu_array, T_array)
     fig = plt.figure()
     CS = plt.contourf(mu_ax, T_ax, min_values, 15)
