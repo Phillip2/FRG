@@ -1,0 +1,7 @@
+1) Modularisation: Render the code extendable. Separate the calulation of the raw phase diagram data from the interpolation and the plotting functions.
+2) Extend to 3D-Grid
+3) Implement alternative solver: Spectral method -> Chebyshev polynomials
+4) Write differential evolution algorithm to determine UV parameters 
+5) Improve plots, make them more informative and fancy
+6) Plot Temperature/mu-dependent masses and couplings
+7) 
