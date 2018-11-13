@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fmin
 import tkinter as tk
 from tkinter import filedialog
+from matplotlib.ticker import MaxNLocator
+
 
 
 def interpFunc(t, a, b, c):
@@ -42,17 +44,17 @@ if __name__ == "__main__":
     k_IR = dat[4]
     N_k = dat[5]
     L = dat[6]
-    N = dat[7]
+    N = int(dat[7])
     x = np.linspace(0, L, N)
     dx = x[1] - x[0]
     k = np.linspace(k_cutoff, k_IR, N_k)
     u0 = 1.0/2.0*m_lam**2*x + lam/4.0*x**2
     T_min = dat[8]
     T_max = dat[9]
-    N_T = dat[10]
+    N_T = int(dat[10])
     mu_min = dat[11]
     mu_max = dat[12]
-    N_mu = dat[13]
+    N_mu = int(dat[13])
     T_array = np.linspace(T_min, T_max, N_T)
     mu_array = np.linspace(mu_min, mu_max, N_mu)
     h = dat[14]
@@ -81,7 +83,11 @@ if __name__ == "__main__":
     plt.plot(sol[0][0] - expl_sym_br, color="r")
     plt.plot(sol[0][-1] - expl_sym_br, color="b")
     mu_ax, T_ax = np.meshgrid(mu_array, T_array)
-    fig = plt.figure()
-    CS = plt.contourf(mu_ax, T_ax, min_values, 15)
+    fig, ax1 = plt.subplots(nrows=1)
+    levels = MaxNLocator(nbins=20).tick_values(min_values.min(),
+                                              min_values.max())
+    CS = ax1.contourf(mu_ax, T_ax, min_values, levels=levels)
+    fig.colorbar(CS, ax=ax1)
     plt.title('Phase Diagram')
+    plt.savefig('PhaseDiagramN_T'+str(N_T)+'N_mu'+str(N_mu)+'.png')
     plt.show()
