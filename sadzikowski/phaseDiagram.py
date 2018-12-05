@@ -70,28 +70,27 @@ if __name__ == "__main__":
     k_cutoff = 650
 
     T_min = 5
-    T_max = 180
-    N_T = 5
+    T_max = 60
+    N_T = 2
     mu_min = 0
     mu_max = 400
-    N_mu = 5
-    N_cond = 10
+    N_mu = 2
+    N_cond = 5
     cond_array = np.linspace(0, 500, N_cond)
     N_d = 5
-    N_q = 5
+    N_q = 8
     d_array = np.linspace(0, 200, N_d)
     q_array = np.linspace(0, 400, N_q)
     T_array = np.linspace(T_min, T_max, N_T)
     mu_array = np.linspace(mu_min, mu_max, N_mu)
     mu_ax, T_ax = np.meshgrid(mu_array, T_array)
-    sol = [[[None for _ in range(N_cond)] for _ in range(N_mu)] for _ in range(N_T)]
     min_values = np.zeros([N_T, N_mu])
     min_values_cond = np.zeros([N_T, N_mu])
     min_values_diq = np.zeros([N_T, N_mu])
     min_values_inh = np.zeros([N_T, N_mu])
-    sol = [[[[None for _ in range(N_d)] for _ in range(N_cond)] for _ in range(N_mu)] for _ in range(N_T)]
     sol = [[[[[None for _ in range(N_q)] for _ in range(N_d)] for _ in range(N_cond)] for _ in range(N_mu)] for _ in range(N_T)]
     num_cores = multiprocessing.cpu_count()
+    print("number of cores: ", num_cores)
     for i in range(N_T):
         for j in range(N_mu):
             for k in range(N_cond):
@@ -111,8 +110,8 @@ if __name__ == "__main__":
     print(min_values_inh)
     print("TIME: ", time.time()-start)
 
-    param_list = np.array([G, Gd, k_cutoff, T_min, T_max, N_T, mu_min, mu_max, N_mu, N_cond. N_d, N_q, sol], dtype=object)
-    dat_name = '2DPhaseDiagramN_T'+str(N_T)+'N_mu'+str(N_mu)+'N_cond'+str(N_cond)+'N_d'+str(N_d)+'N_q'+str(N_q)
+    param_list = np.array([G, Gd, k_cutoff, T_min, T_max, N_T, mu_min, mu_max, N_mu, N_cond, N_d, N_q, sol], dtype=object)
+    dat_name = '2DPhaseDiagram_T_max'+str(T_max)+'N_T'+str(N_T)+'N_mu'+str(N_mu)+'N_cond'+str(N_cond)+'N_d'+str(N_d)+'N_q'+str(N_q)
     fig_name = dat_name+'.png'
     np.save(dat_name, param_list)
 
