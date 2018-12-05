@@ -71,14 +71,14 @@ if __name__ == "__main__":
 
     T_min = 5
     T_max = 60
-    N_T = 2
+    N_T = 10
     mu_min = 0
     mu_max = 400
-    N_mu = 2
-    N_cond = 5
+    N_mu = 10
+    N_cond = 20
     cond_array = np.linspace(0, 500, N_cond)
-    N_d = 5
-    N_q = 8
+    N_d = 20
+    N_q = 12
     d_array = np.linspace(0, 200, N_d)
     q_array = np.linspace(0, 400, N_q)
     T_array = np.linspace(T_min, T_max, N_T)
