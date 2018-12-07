@@ -69,12 +69,12 @@ if __name__ == "__main__":
     Gd = 3*G/4
     k_cutoff = 650
 
-    T_min = 5
-    T_max = 60
+    T_min = 125
+    T_max = 180
     N_T = 10
     mu_min = 0
     mu_max = 400
-    N_mu = 10
+    N_mu = 30
     N_cond = 20
     cond_array = np.linspace(0, 500, N_cond)
     N_d = 20
